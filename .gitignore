@@ -1,3 +1,4 @@
 *.m4a
 output/
 __pycache__/
+p2_spotify_secret.py
