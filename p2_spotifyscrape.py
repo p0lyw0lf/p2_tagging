@@ -1,4 +1,8 @@
 import spotipy
+from io import BytesIO
+from PIL import Image
+from mutagen.mp4 import AtomDataType
+from urllib.request import urlopen
 
 from p2_scrape import Scraper
 from p2_spotify_secret import ccm
@@ -26,9 +30,19 @@ class SpotifyScraper(Scraper):
         song.album = track['album']['name']
         song.album_artists = [artist['name'] for artist in track['album']['artists']]
         song.year = track['album']['release_date'].split('-')[0]
+
+        album = self.sf.album(track['album']['id'])
+        song.genres = album['genres']
         
-        # TODO: set image. this should be fairly easy, just need to download image and
-        # add capability to Song to check what format (PNG or JPEG) it is.
+        song.refresh()
+        
+        rq = urlopen(track['album']['images'][0]['url'])
+        img = Image.open(rq)
+        output_fp = BytesIO()
+        img.save(output_fp, format="PNG")
+
+        song.image_type = AtomDataType.PNG
+        song.write_image(output_fp.getvalue())
         
         return True
         

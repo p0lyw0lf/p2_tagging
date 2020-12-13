@@ -44,7 +44,7 @@ def list_from_artists(names: str) -> List[str]:
         # but account for weird stuff happening anyways
         return parts
         
-UNSAFE_CHARS = "/\\?|"
+UNSAFE_CHARS = "/\\?|:"
 def safe_windows_filename(f: str) -> str:
     for ch in UNSAFE_CHARS:
         if ch in f:
@@ -73,27 +73,39 @@ class Song:
                        album: str="",
                        album_artists: List[str]=[],
                        year: str="",
+                       genre: str="",
                        output_directory: str=""):
         self.title = title
         self.artists = artists
         self.album = album
         self.album_artists = album_artists
         self.year = year
+        self.genre = genre
         
         self.source_filename = source_filename
         self.music_output_directory = os.path.dirname(source_filename)
         self.image_output_directory = output_directory
         self.filename = os.path.basename(self.source_filename)
         self.image_filename = "tmp.png"
+        self.image_type = AtomDataType.PNG
         self.image_data = b''
         
-        self._read_tags_from_MP4(MP4(self.source_filename))  
+        self._read_tags_from_MP4(MP4(self.source_filename))
+
+    def _image_extension(self):
+        if self.image_type == AtomDataType.PNG:
+            return "png"
+        elif self.image_type == AtomDataType.JPEG:
+            return "jpeg"
+        else:
+            raise ValueError("Got incorrect image type {} while loading".format(self.image_type))
     
     def refresh(self):
         self.artists_string = artist_list(self.artists)
         self.album_artists_string = artist_list(self.album_artists)
         
-        new_filename = safe_windows_filename(f"{self.artists_string}_{self.title}_{self.album}.m4a")
+        new_filename = safe_windows_filename(
+            f"{self.artists_string}_{self.title}_{self.album}.m4a")
         
         if new_filename != self.filename:
             old_filepath = os.path.join(self.music_output_directory, self.filename)
@@ -108,7 +120,9 @@ class Song:
                 print(subprocess.run(cmd))
             self.filename = new_filename
             
-        new_image_filename = safe_windows_filename(f"{self.artists_string}_{self.title}_{self.album}.png")
+        
+        new_image_filename = safe_windows_filename(
+            f"{self.artists_string}_{self.title}_{self.album}.{self._image_extension()}")
         if new_image_filename != self.image_filename:
             old_image_filepath = os.path.join(self.image_output_directory, self.image_filename)
             new_image_filepath = os.path.join(self.image_output_directory, new_image_filename)
@@ -124,28 +138,31 @@ class Song:
     def save_tags(self):
         f = MP4(os.path.join(self.music_output_directory, self.filename))
         f.tags[u'\xa9nam'] = self.title
-        f.tags[u'\xa9ART'] = self.artists_string
+        f.tags[u'\xa9ART'] = self.artists
         f.tags[u'\xa9alb'] = self.album
-        f.tags[u'aART'] = self.album_artists_string
+        f.tags[u'aART'] = self.album_artists
         f.tags[u'\xa9day'] = self.year
+        f.tags[u'\xa9gen'] = self.genres
         imagedata = self.read_image()
         if imagedata:
-            f.tags[u'covr'] = [MP4Cover(imagedata, AtomDataType.PNG)]
+            f.tags[u'covr'] = [MP4Cover(imagedata, self.image_type)]
         f.save()
         
     def _read_tags_from_MP4(self, f):
         self.title = f.tags.get(u'\xa9nam', [''])[0]
-        self.artists_string = f.tags.get(u'\xa9ART', [''])[0]
-        self.artists = list_from_artists(self.artists_string)
+        self.artists = f.tags.get(u'\xa9ART', [''])
+        self.artists_string = artist_list(self.artists)
         self.album = f.tags.get(u'\xa9alb', [''])[0]
-        self.album_artists_string = f.tags.get(u'aART', [''])[0]
-        self.album_artists = list_from_artists(self.album_artists_string)
+        self.album_artists = f.tags.get(u'aART', [''])
+        self.album_artists_string = artist_list(self.album_artists)
         self.year = f.tags.get(u'\xa9day', [''])[0]
+        self.genres = f.tags.get(u'\xa9gen', [''])
         
         #self.refresh()
         
-        imagedata = f.tags.get(u'covr', [b''])[0]
+        imagedata = f.tags.get(u'covr', [MP4Cover(b'', self.image_type)])[0]
         if imagedata:
+            self.image_type = imagedata.imageformat
             self.write_image(imagedata)
         
     def read_tags(self):
