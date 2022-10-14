@@ -7,6 +7,7 @@ from mutagen.mp4 import AtomDataType
 
 
 class Scraper:
+
     def __init__(self):
         pass
 
@@ -15,6 +16,7 @@ class Scraper:
 
 
 class ScrapeHandler:
+
     def __init__(self):
         self.scrapers = []
 
@@ -29,6 +31,7 @@ class ScrapeHandler:
             if regex.search(text):
                 return scraper.scrape(text, song)
         return False
+
 
 def load_image_from_url(url):
     """

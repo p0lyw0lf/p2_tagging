@@ -6,9 +6,11 @@ Requirements:
 * Python 3.8
   * mutagen
   * pillow
+  * spotipy
+  * beautifulsoup4
 
 ## Usage
-1. Launch `p2_gui.py` and load the folder containing all the files whose metadata you want to edit
+1. Launch `gui.py` and load the folder containing all the files whose metadata you want to edit
 2. Use the *extremely* user-friendly gui to accomplish all the tasks you wish to
 3. Be satisfied that you have used a piece of software written in python with little hassle
 
