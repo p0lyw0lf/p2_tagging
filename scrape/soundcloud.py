@@ -63,9 +63,10 @@ class SoundcloudScraper(Scraper):
         song.album_artists = song.artists
         song.image_data, song.image_type = load_image_from_url(
             html.select_one('meta[property="og:image"]')['content'])
-        song.year = datetime.strptime(
-            html.select_one('header').select_one('time').string,
-            "%Y-%m-%dT%H:%M:%SZ").year
+        song.year = str(
+            datetime.strptime(
+                html.select_one('header').select_one('time').string,
+                "%Y-%m-%dT%H:%M:%SZ").year)
 
         return True
 

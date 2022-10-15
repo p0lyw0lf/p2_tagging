@@ -1,25 +1,26 @@
-import pickle
 import os
-import sys
 import subprocess
-from shutil import copyfile
 from typing import List, Dict, Tuple
 
-from mutagen.mp4 import *
+from mutagen.mp4 import AtomDataType, MP4, MP4Cover
+
 
 def _lev(a: str, b: str, i: int, j: int, d: Dict[Tuple[int, int], int]) -> int:
-    if (i,j) in d: return d[i,j]
+    if (i, j) in d:
+        return d[i, j]
     if min(i, j) == 0:
-        d[i,j] = max(i, j)
-        return d[i,j]
-    p1 = lev(a, b, i-1,j,   d)+1
-    p2 = lev(a, b, i,  j-1, d)+1
-    p3 = lev(a, b, i-1,j-1, d)+(0 if a[i]==b[j] else 1)
-    d[i,j] = min(p1, p2, p3)
-    return d[i,j]
+        d[i, j] = max(i, j)
+        return d[i, j]
+    p1 = lev(a, b, i - 1, j, d) + 1
+    p2 = lev(a, b, i, j - 1, d) + 1
+    p3 = lev(a, b, i - 1, j - 1, d) + (0 if a[i] == b[j] else 1)
+    d[i, j] = min(p1, p2, p3)
+    return d[i, j]
+
 
 def lev(a: str, b: str) -> int:
-    return _lev(a, b, len(a)-1, len(b)-1, dict())
+    return _lev(a, b, len(a) - 1, len(b) - 1, dict())
+
 
 def artist_list(names: List[str]) -> str:
     if len(names) > 2:
@@ -34,6 +35,7 @@ def artist_list(names: List[str]) -> str:
 
     return out
 
+
 def list_from_artists(names: str) -> List[str]:
     parts = names.split(' & ')
     if len(parts) == 2:
@@ -45,7 +47,10 @@ def list_from_artists(names: str) -> List[str]:
         # but account for weird stuff happening anyways
         return parts
 
+
 UNSAFE_CHARS = "/\\?|:"
+
+
 def safe_windows_filename(f: str) -> str:
     for ch in UNSAFE_CHARS:
         if ch in f:
@@ -68,13 +73,15 @@ class Song:
     s.refresh()
     s.save_tags()
     """
-    def __init__(self, source_filename: str,
-                       title: str="",
-                       artists: List[str]=[],
-                       album: str="",
-                       album_artists: List[str]=[],
-                       year: str="",
-                       genre: str=""):
+
+    def __init__(self,
+                 source_filename: str,
+                 title: str = "",
+                 artists: List[str] = [],
+                 album: str = "",
+                 album_artists: List[str] = [],
+                 year: str = "",
+                 genre: str = ""):
         self.title = title
         self.artists = artists
         self.album = album
@@ -97,7 +104,9 @@ class Song:
         elif self.image_type == AtomDataType.JPEG:
             return "jpeg"
         else:
-            raise ValueError("Got incorrect image type {} while loading".format(self.image_type))
+            raise ValueError(
+                "Got incorrect image type {} while loading".format(
+                    self.image_type))
 
     def refresh(self):
         self.artists_string = artist_list(self.artists)
@@ -107,14 +116,19 @@ class Song:
             f"{self.artists_string}_{self.title}_{self.album}.m4a")
 
         if new_filename != self.filename:
-            old_filepath = os.path.join(self.music_output_directory, self.filename)
-            new_filepath = os.path.join(self.music_output_directory, new_filename)
+            old_filepath = os.path.join(self.music_output_directory,
+                                        self.filename)
+            new_filepath = os.path.join(self.music_output_directory,
+                                        new_filename)
             if os.path.exists(old_filepath) and os.path.isfile(old_filepath):
                 os.rename(old_filepath, new_filepath)
             else:
                 # we need to create the M4A file to tag
                 # this assume ffmpeg is on the $PATH
-                cmd = ["ffmpeg", "-y", "-i", self.source_filename, "-vn", new_filepath]
+                cmd = [
+                    "ffmpeg", "-y", "-i", self.source_filename, "-vn",
+                    new_filepath
+                ]
                 print("Creating new file")
                 print(subprocess.run(cmd))
             self.filename = new_filename
@@ -142,11 +156,11 @@ class Song:
         self.year = f.tags.get(u'\xa9day', [''])[0]
         self.genres = f.tags.get(u'\xa9gen', [''])
 
-        self.image_data = f.tags.get(u'covr', [MP4Cover(b'', self.image_type)])[0]
+        self.image_data = f.tags.get(u'covr',
+                                     [MP4Cover(b'', self.image_type)])[0]
         if self.image_data:
             self.image_type = self.image_data.imageformat
 
     def read_tags(self):
         f = MP4(os.path.join(self.music_output_directory, self.filename))
         self._read_tags_from_MP4(f)
-
