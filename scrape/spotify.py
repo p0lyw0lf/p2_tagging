@@ -35,7 +35,7 @@ class SpotifyScraper(Scraper):
         song.genres = album['genres']
 
         song.image_data, song.image_type = load_image_from_url(
-            track['album']['images'][-1]['url'])
+            track['album']['images'][0]['url'])
         song.refresh()
 
         return True

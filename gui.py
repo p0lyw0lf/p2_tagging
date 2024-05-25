@@ -311,7 +311,7 @@ class SongInput:
         if self.image_data:
             self.image = ImageTk.PhotoImage(
                 Image.open(io.BytesIO(self.image_data)).resize(
-                    (IMAGE_WIDTH, IMAGE_HEIGHT), Image.ANTIALIAS))
+                    (IMAGE_WIDTH, IMAGE_HEIGHT)))
         else:
             self.image = ImageTk.PhotoImage(DEFAULT_IMAGE)
         self.image_button.configure(image=self.image)
@@ -406,8 +406,8 @@ class SongLoader:
             (DEFAULT_FILE_EXTENSION.upper(), "*." + DEFAULT_FILE_EXTENSION),
             ("All Files", "*.*")
         ],
-                                              title="Choose Song",
-                                              initialdir=os.getcwd())
+            title="Choose Song",
+            initialdir=os.getcwd())
 
         if filename:
             self.base_directory = os.path.dirname(filename)
