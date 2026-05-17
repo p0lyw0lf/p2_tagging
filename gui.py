@@ -14,7 +14,7 @@ DEFAULT_IMAGE_DATA = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x01\x00\x00\x
 DEFAULT_IMAGE = Image.open(io.BytesIO(DEFAULT_IMAGE_DATA))
 DEFAULT_IMAGE_TYPE = AtomDataType.PNG
 
-DEFAULT_FILE_EXTENSION = "m4a"
+DEFAULT_FILE_EXTENSION = "mp3"
 IMAGE_WIDTH = 256
 IMAGE_HEIGHT = 256
 
@@ -176,7 +176,6 @@ class SongInput:
 
         self.artists = MultiStringVars(main_container)
         self.album_artists = MultiStringVars(main_container)
-        self.genres = MultiStringVars(main_container)
 
         ttk.Label(main_container, text="Filename:")\
            .grid(column=0, row=0)
@@ -208,12 +207,7 @@ class SongInput:
         self.year_entry = ttk.Entry(main_container, textvariable=self.year)
         self.year_entry.grid(column=1, row=5, sticky=(W, E))
 
-        self.genres.under_widget = self.year_entry
-        ttk.Label(main_container, text="Genres:")\
-           .grid(column=0, row=6, sticky=N)
-        self.genres.container.grid(column=1, row=6, sticky=(N, S, E, W))
-
-        for msv in (self.artists, self.album_artists, self.genres):
+        for msv in (self.artists, self.album_artists):
             msv.add_new_entry()
             msv.add_button()
 
@@ -228,7 +222,6 @@ class SongInput:
         main_container.columnconfigure(1, weight=4)
         self.artists.container.columnconfigure(0, weight=1)
         self.album_artists.container.columnconfigure(0, weight=1)
-        self.genres.container.columnconfigure(0, weight=1)
 
         self.image_search_directory = os.getcwd()
 
@@ -241,7 +234,6 @@ class SongInput:
 
             self.artists.set(song.artists)
             self.album_artists.set(song.album_artists)
-            self.genres.set(song.genres)
 
             self.image_data = song.image_data
             self.image_type = song.image_type
@@ -254,7 +246,6 @@ class SongInput:
 
             self.artists.set([""])
             self.album_artists.set([""])
-            self.genres.set([""])
 
             self.image_data = None
             self.image_type = DEFAULT_IMAGE_TYPE
@@ -267,7 +258,6 @@ class SongInput:
 
         song.artists = self.artists.get()
         song.album_artists = self.album_artists.get()
-        song.genres = self.genres.get()
 
         song.image_data = self.image_data
         song.image_type = self.image_type
@@ -522,7 +512,7 @@ Ctrl+r: Refresh listing of songs in the directory
 Ctrl+s: Save metadata for the current song
  * If you make a mistake, just close the program or toggle which song you're
    on, nothing is saved until you manually click save.
-Ctrl+, and Ctrl+.: Go to previous and next songs
+Ctrl+9 and Ctrl+0: Go to previous and next songs
 """
     HELP_TEXT = """CopyLeft 2022, PolyWolf. Find me on Discord!"""
     helpmenu.add_command(
@@ -561,8 +551,8 @@ Ctrl+, and Ctrl+.: Go to previous and next songs
     root.bind("<Control-O>", lambda _: songloader.set_directory())
     root.bind("<Control-k>", lambda _: metadataguesser.url_load_metadata())
     root.bind("<Control-r>", lambda _: songloader.refresh_filelist())
-    root.bind("<Control-.>", lambda _: songloader.increment_index())
-    root.bind("<Control-,>", lambda _: songloader.decrement_index())
+    root.bind("<Control-0>", lambda _: songloader.increment_index())
+    root.bind("<Control-9>", lambda _: songloader.decrement_index())
     root.bind("<Control-l>",
               lambda _: songloader.copy_song_info_to_album_info())
 

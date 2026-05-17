@@ -53,7 +53,7 @@ class SoundcloudScraper(Scraper):
         else:
             song.genres = []
 
-        html = BeautifulSoup(raw_html, 'html5lib')
+        html = BeautifulSoup(raw_html, 'html.parser')
 
         song.title = html.select_one('meta[property="og:title"]')['content']
         song.album = song.title

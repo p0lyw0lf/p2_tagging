@@ -2,7 +2,9 @@ import os
 import subprocess
 from typing import List, Dict, Tuple
 
-from mutagen.mp4 import AtomDataType, MP4, MP4Cover
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3, PictureType, Encoding
+from mutagen.id3 import TIT2, TPE1, TALB, TPE2, TDRC, APIC
 
 
 def _lev(a: str, b: str, i: int, j: int, d: Dict[Tuple[int, int], int]) -> int:
@@ -80,28 +82,26 @@ class Song:
                  artists: List[str] = [],
                  album: str = "",
                  album_artists: List[str] = [],
-                 year: str = "",
-                 genre: str = ""):
+                 year: str = ""):
         self.title = title
         self.artists = artists
         self.album = album
         self.album_artists = album_artists
         self.year = year
-        self.genre = genre
 
         self.source_filename = source_filename
         self.music_output_directory = os.path.dirname(source_filename)
         self.filename = os.path.basename(self.source_filename)
         self.image_filename = None
-        self.image_type = AtomDataType.PNG
+        self.image_type = "image/png"
         self.image_data = b''
 
-        self._read_tags_from_MP4(MP4(self.source_filename))
+        self._read_tags_from_MP3(MP3(self.source_filename))
 
     def _image_extension(self):
-        if self.image_type == AtomDataType.PNG:
+        if self.image_type == "image/png":
             return "png"
-        elif self.image_type == AtomDataType.JPEG:
+        elif self.image_type == "image/jpeg":
             return "jpeg"
         else:
             raise ValueError(
@@ -112,55 +112,57 @@ class Song:
         self.artists_string = artist_list(self.artists)
         self.album_artists_string = artist_list(self.album_artists)
 
-        new_filename = safe_windows_filename(
-            f"{self.artists_string}_{self.title}_{self.album}.m4a")
-
-        if new_filename != self.filename:
-            old_filepath = os.path.join(self.music_output_directory,
-                                        self.filename)
-            new_filepath = os.path.join(self.music_output_directory,
-                                        new_filename)
-            if os.path.exists(old_filepath) and os.path.isfile(old_filepath):
-                os.rename(old_filepath, new_filepath)
-            else:
-                # we need to create the M4A file to tag
-                # this assume ffmpeg is on the $PATH
-                cmd = [
-                    "ffmpeg", "-y", "-i", self.source_filename, "-vn",
-                    new_filepath
-                ]
-                print("Creating new file")
-                print(subprocess.run(cmd))
-            self.filename = new_filename
-
     def save_tags(self):
-        f = MP4(os.path.join(self.music_output_directory, self.filename))
-        f.tags[u'\xa9nam'] = self.title
-        f.tags[u'\xa9ART'] = self.artists_string
-        f.tags[u'\xa9alb'] = self.album
-        f.tags[u'aART'] = self.album_artists_string
-        f.tags[u'\xa9day'] = self.year
-        f.tags[u'\xa9gen'] = self.genres
+        f = MP3(os.path.join(self.music_output_directory, self.filename))
+        if f.tags is None:
+            f.tags = ID3()
+
+        f.tags.setall("TIT2", [TIT2(text=self.title)])
+        f.tags.setall("TPE1", [TPE1(text=self.artists_string)])
+        f.tags.setall("TALB", [TALB(text=self.album)])
+        f.tags.setall("TPE2", [TPE2(text=self.album_artists_string)])
+        f.tags.setall("TDRC", [TDRC(text=self.year)])
 
         if self.image_data:
-            f.tags[u'covr'] = [MP4Cover(self.image_data, self.image_type)]
+            f.tags.setall("APIC", [APIC(
+                mime_type=self.image_type,
+                type=PictureType.COVER_FRONT,
+                data=self.image_data,
+            )])
+
         f.save()
 
-    def _read_tags_from_MP4(self, f):
-        self.title = f.tags.get(u'\xa9nam', [''])[0]
-        self.artists_string = f.tags.get(u'\xa9ART', [''])[0]
-        self.artists = list_from_artists(self.artists_string)
-        self.album = f.tags.get(u'\xa9alb', [''])[0]
-        self.album_artists_string = f.tags.get(u'aART', [''])[0]
-        self.album_artists = list_from_artists(self.album_artists_string)
-        self.year = f.tags.get(u'\xa9day', [''])[0]
-        self.genres = f.tags.get(u'\xa9gen', [''])
+    def _read_tags_from_MP3(self, f):
+        if f.tags is None:
+            return
 
-        self.image_data = f.tags.get(u'covr',
-                                     [MP4Cover(b'', self.image_type)])[0]
+        self.title = fst_or_empty(f.tags.getall("TIT2"))
+        self.artists_string = fst_or_empty(f.tags.getall("TPE1"))
+        self.artists = list_from_artists(self.artists_string)
+        self.album = fst_or_empty(f.tags.getall("TALB"))
+        self.album_artists_string = fst_or_empty(f.tags.getall("TPE2"))
+        self.album_artists = list_from_artists(self.album_artists_string)
+        self.year = fst_or_empty(f.tags.getall("TDRC"))
+
+        images = f.tags.getall("APIC")
+        self.image_data = None
+        for image in images:
+            if isinstance(image, APIC):
+                if self.image_data is None or self.image_data.type != PictureType.COVER_FRONT:
+                    self.image_data = image
+
         if self.image_data:
-            self.image_type = self.image_data.imageformat
+            self.image_type = self.image_data.mime
+            self.image_data = self.image_data.data
 
     def read_tags(self):
-        f = MP4(os.path.join(self.music_output_directory, self.filename))
-        self._read_tags_from_MP4(f)
+        f = MP3(os.path.join(self.music_output_directory, self.filename))
+        self._read_tags_from_MP3(f)
+
+
+def fst_or_empty(tags):
+    if len(tags) > 0:
+        tag = tags[0]
+        return tag.text[0]
+    else:
+        return ""
